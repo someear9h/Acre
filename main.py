@@ -4,7 +4,7 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import scan, advisory, market
+from routers import scan, advisory, market, status
 
 warnings.simplefilter("ignore", FutureWarning)
 
@@ -23,6 +23,7 @@ app.add_middleware(
 app.include_router(scan.router)
 app.include_router(advisory.router)
 app.include_router(market.router)
+app.include_router(status.router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

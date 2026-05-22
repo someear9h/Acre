@@ -25,19 +25,15 @@ async def get_mandi_price(district: str, commodity: str) -> dict:
         "filters[district]": district,
         "filters[commodity]": commodity,
     }
-
-    # CRITICAL FIX: Government APIs often block Python requests without a User-Agent. 
-    # Adding headers mimics a real browser/curl request.
+    
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Accept": "application/json"
     }
 
     try:
-        print(f"📡 Requesting real-time {commodity} data for {district} from data.gov.in...")
+        print(f"Requesting real-time {commodity} data for {district} from data.gov.in...")
         
-        # Bumped timeout to 5.0s to give the real API a fighting chance, 
-        # while still being fast enough for a live demo.
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get(MANDI_API_URL, params=params, headers=headers)
 
@@ -47,7 +43,7 @@ async def get_mandi_price(district: str, commodity: str) -> dict:
 
             if records:
                 first_record = records[0]
-                print("✅ Real-time API succeeded!")
+                print("Real-time API succeeded!")
                 return {
                     "modal_price": first_record.get("modal_price"),
                     "market": first_record.get("market"),
@@ -59,15 +55,15 @@ async def get_mandi_price(district: str, commodity: str) -> dict:
                 print(f"⚠️ API returned success, but no records found for {commodity} in {district}.")
 
     except httpx.TimeoutException:
-        print("⚠️ data.gov.in timed out. Triggering fallback database for demo...")
+        print("data.gov.in timed out. Triggering fallback database for demo...")
     except Exception as e:
-        print(f"⚠️ API Error: {e}. Triggering fallback...")
+        print(f"API Error: {e}. Triggering fallback...")
 
     # --- THE DEMO ORACLE FALLBACK ---
     lookup_key = f"{district}_{commodity}"
     if lookup_key in FALLBACK_MANDI_DB:
         fallback_data = FALLBACK_MANDI_DB[lookup_key]
-        print(f"🛡️ Using fallback data for {lookup_key}")
+        print(f"Using fallback data for {lookup_key}")
         return {
             "modal_price": fallback_data["modal_price"],
             "market": fallback_data["market"],

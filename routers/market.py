@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from services.mandi_service import get_mandi_price
 from services.clients import gemini_client, twilio_client, TWILIO_NUMBER
+from services.state import ACTIVE_CONTRACTS, ACTIVE_LISTINGS
 
 router = APIRouter()
 
@@ -59,7 +60,13 @@ Write a 3-sentence WhatsApp message in simple Hindi. State the official price, c
             )
 
     # --- Step 3: Send WhatsApp message via Twilio ---
-    msg_body = f"🏷️ *Market Connector Alert*\n\n{advisory_text}"
+    negotiation_instructions = (
+        "\n\nकार्रवाई करें (Take Action):\n"
+        "• स्वीकार करने के लिए रिप्लाई करें: ACCEPT\n"
+        "• नया भाव देने के लिए रिप्लाई करें: OFFER [नया भाव] (उदा. OFFER 850)\n"
+        "• रद्द करने के लिए रिप्लाई करें: REJECT"
+    )
+    msg_body = f"🏷️ *Market Connector Alert*\n\n{advisory_text}{negotiation_instructions}"
 
     try:
         twilio_client.messages.create(
@@ -71,7 +78,16 @@ Write a 3-sentence WhatsApp message in simple Hindi. State the official price, c
     except Exception as e:
         whatsapp_status = f"Failed to send WhatsApp: {e}"
 
-    # --- Step 4: Return summary ---
+    # --- Step 4: Save contract state for the negotiation loop ---
+    ACTIVE_CONTRACTS[farmer_phone] = {
+        "status": "OFFER_SENT",
+        "commodity": commodity,
+        "current_offer": buyer_offer_price,
+        "counter_offer": None,
+    }
+    print(f"📝 Contract saved for {farmer_phone}: {ACTIVE_CONTRACTS[farmer_phone]}")
+
+    # --- Step 5: Return summary ---
     return {
         "status": whatsapp_status,
         "commodity": commodity,
@@ -82,3 +98,9 @@ Write a 3-sentence WhatsApp message in simple Hindi. State the official price, c
         "price_difference": round(price_difference, 2),
         "ai_advisory": advisory_text,
     }
+
+
+@router.get("/api/live-listings")
+async def get_live_listings():
+    """Returns all active farmer produce listings for the buyer dashboard."""
+    return {"listings": ACTIVE_LISTINGS, "count": len(ACTIVE_LISTINGS)}

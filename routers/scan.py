@@ -1,4 +1,6 @@
 import os
+import re
+import random
 import requests
 import numpy as np
 from io import BytesIO
@@ -6,6 +8,7 @@ from PIL import Image
 from fastapi import APIRouter, Form, Response
 import tensorflow as tf
 from services.clients import twilio_client, gemini_client, TWILIO_NUMBER
+from services.state import ACTIVE_CONTRACTS, ACTIVE_LISTINGS
 
 router = APIRouter()
 
@@ -94,6 +97,109 @@ async def receive_whatsapp_image(
             
         except Exception as e:
             print(f"Error: {e}")
+    elif NumMedia == 0 and Body:
+        # --- STRUCTURED COMMAND PROTOCOL ---
+        # Parse text-only replies for LIST / ACCEPT / REJECT / OFFER commands.
+        text = Body.strip().upper()
+        farmer_phone = From.replace("whatsapp:", "")
+        print(f"Text reply from {farmer_phone}: '{text}'")
+
+        # --- LIST COMMAND HANDLER ---
+        # Format: LIST <quantity> <commodity>  (e.g. "LIST 50 POTATO")
+        if text.startswith("LIST"):
+            try:
+                match = re.match(r'^LIST\s+(\d+)\s+(.+)$', text)
+                if match:
+                    quantity = int(match.group(1))
+                    commodity = match.group(2).strip().capitalize()
+
+                    listing = {
+                        "id": random.randint(1000, 9999),
+                        "farmer_phone": farmer_phone,
+                        "district": "Demo District",
+                        "commodity": commodity,
+                        "quantity": quantity,
+                    }
+                    ACTIVE_LISTINGS.append(listing)
+                    print(f"New listing created: {listing}")
+
+                    reply = (
+                        f"✅ आपकी उपज Acre लाइव मार्केट में लिस्ट कर दी गई है!\n"
+                        f"(Your produce is now listed on the Acre live market!)\n\n"
+                        f"📦 {commodity} — {quantity} Quintals"
+                    )
+                else:
+                    reply = (
+                        "⚠️ सही फॉर्मेट:\nLIST [मात्रा] [फसल का नाम]\n"
+                        "उदा: LIST 50 POTATO"
+                    )
+
+                twilio_client.messages.create(
+                    from_=f"whatsapp:{TWILIO_NUMBER}",
+                    to=From,
+                    body=reply
+                )
+
+            except Exception as e:
+                print(f"LIST handler error: {e}")
+                twilio_client.messages.create(
+                    from_=f"whatsapp:{TWILIO_NUMBER}",
+                    to=From,
+                    body="⚠️ कुछ गड़बड़ हो गई। कृपया दोबारा कोशिश करें।"
+                )
+
+        # --- NEGOTIATION REPLY HANDLER ---
+        # Parse text-only replies for ACCEPT / REJECT / OFFER commands.
+        elif farmer_phone in ACTIVE_CONTRACTS:
+            contract = ACTIVE_CONTRACTS[farmer_phone]
+            print(f"Active contract found: {contract}")
+
+            try:
+                if text.startswith("ACCEPT"):
+                    contract["status"] = "ACCEPTED"
+                    reply = "✅ सौदा पक्का हो गया है! (Deal Confirmed!)"
+
+                elif text.startswith("REJECT"):
+                    contract["status"] = "REJECTED"
+                    reply = "❌ सौदा रद्द कर दिया गया है। (Deal Cancelled)"
+
+                elif text.startswith("OFFER"):
+                    match = re.search(r'\d+', text)
+                    if match:
+                        counter_amount = int(match.group())
+                        contract["counter_offer"] = counter_amount
+                        contract["status"] = "COUNTER_OFFER"
+                        reply = f"⏳ आपका नया भाव (₹{counter_amount}) खरीदार को भेज दिया गया है। (Counter-offer sent.)"
+                    else:
+                        reply = "⚠️ कृपया सही भाव लिखें। उदा: OFFER 850"
+
+                else:
+                    reply = (
+                        "कृपया निम्न में से एक कमांड भेजें:\n"
+                        "• ACCEPT\n• REJECT\n• OFFER [राशि]"
+                    )
+
+                twilio_client.messages.create(
+                    from_=f"whatsapp:{TWILIO_NUMBER}",
+                    to=From,
+                    body=reply
+                )
+                print(f"Negotiation reply sent: {contract['status']}")
+
+            except Exception as e:
+                print(f"Negotiation handler error: {e}")
+                twilio_client.messages.create(
+                    from_=f"whatsapp:{TWILIO_NUMBER}",
+                    to=From,
+                    body="⚠️ कुछ गड़बड़ हो गई। कृपया दोबारा कोशिश करें।"
+                )
+        else:
+            # No active contract and not a command — send default prompt
+            twilio_client.messages.create(
+                from_=f"whatsapp:{TWILIO_NUMBER}",
+                to=From,
+                body="कृपया अपनी फसल की पत्ती की एक साफ तस्वीर भेजें।"
+            )
     else:
         twilio_client.messages.create(
             from_=f"whatsapp:{TWILIO_NUMBER}",
