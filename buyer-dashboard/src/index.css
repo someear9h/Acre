@@ -68,6 +68,16 @@
   animation: toast-out 0.3s ease-in forwards;
 }
 
+/* Alert card slide-down */
+@keyframes alert-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-alert-in {
+  animation: alert-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

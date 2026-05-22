@@ -25,7 +25,7 @@ async def get_mandi_price(district: str, commodity: str) -> dict:
         "filters[district]": district,
         "filters[commodity]": commodity,
     }
-    
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Accept": "application/json"
@@ -52,7 +52,7 @@ async def get_mandi_price(district: str, commodity: str) -> dict:
                     "arrival_date": first_record.get("arrival_date"),
                 }
             else:
-                print(f"⚠️ API returned success, but no records found for {commodity} in {district}.")
+                print(f"API returned success, but no records found for {commodity} in {district}.")
 
     except httpx.TimeoutException:
         print("data.gov.in timed out. Triggering fallback database for demo...")
