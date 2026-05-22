@@ -51,7 +51,7 @@ export default function TradingDesk({ selected, onToast }: TradingDeskProps) {
       onToast({
         type: "success",
         title: "Smart Contract Initiated",
-        message: `Offer of ₹${price}/quintal initiated! KrishiOS Oracle is analyzing the market rate and notifying the farmer via WhatsApp.`,
+        message: `Offer of ₹${price}/quintal initiated! Acre Oracle is analyzing the market rate and notifying the farmer via WhatsApp.`,
       });
 
       setOfferPrice("");
@@ -119,6 +119,11 @@ export default function TradingDesk({ selected, onToast }: TradingDeskProps) {
                 <Award className="h-3.5 w-3.5 text-slate-400" />
                 {selected.grade}
               </span>
+              {selected.askingPrice && (
+                <span className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-bold ${selected.askingPrice === 'Negotiable' ? 'bg-slate-100 text-slate-600' : 'bg-krishi-100 text-krishi-700'}`}>
+                  Ask: {selected.askingPrice === 'Negotiable' ? 'Negotiable' : `₹${selected.askingPrice}/Quintal`}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -133,7 +138,7 @@ export default function TradingDesk({ selected, onToast }: TradingDeskProps) {
           Submit Your Offer
         </h4>
         <p className="mb-5 text-xs text-slate-400">
-          KrishiOS Oracle will compare your offer against today's official Mandi
+          Acre Oracle will compare your offer against today's official Mandi
           price and advise the farmer in real-time.
         </p>
 
@@ -153,7 +158,7 @@ export default function TradingDesk({ selected, onToast }: TradingDeskProps) {
             type="number"
             min="1"
             step="any"
-            placeholder="e.g. 850"
+            placeholder={selected.askingPrice && selected.askingPrice !== 'Negotiable' ? `e.g. ${selected.askingPrice}` : "e.g. 850"}
             value={offerPrice}
             onChange={(e) => setOfferPrice(e.target.value)}
             required

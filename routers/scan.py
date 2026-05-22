@@ -104,14 +104,65 @@ async def receive_whatsapp_image(
         farmer_phone = From.replace("whatsapp:", "")
         print(f"Text reply from {farmer_phone}: '{text}'")
 
-        # --- LIST COMMAND HANDLER ---
-        # Format: LIST <quantity> <commodity>  (e.g. "LIST 50 POTATO")
-        if text.startswith("LIST"):
+        # --- ADVISE COMMAND HANDLER ---
+        # Format: ADVISE <commodity> (e.g. "ADVISE POTATO")
+        if text.startswith("ADVISE"):
             try:
-                match = re.match(r'^LIST\s+(\d+)\s+(.+)$', text)
+                match = re.match(r'^ADVISE\s+(.+)$', text)
+                if match:
+                    crop_name = match.group(1).strip().capitalize()
+                    
+                    from services.mandi_service import get_mandi_price
+                    import sqlite3
+                    
+                    mandi_data = await get_mandi_price("Demo District", crop_name)
+                    modal_price = mandi_data.get("modal_price", 0) if isinstance(mandi_data, dict) else 0
+                    
+                    # Check DB for disease
+                    disease_flag = "Healthy"
+                    try:
+                        conn = sqlite3.connect("acre_ledger.db")
+                        c = conn.cursor()
+                        c.execute("SELECT disease_flag FROM iot_logs WHERE farmer_phone=? ORDER BY timestamp DESC LIMIT 1", (f"+{farmer_phone}" if not farmer_phone.startswith("+") else farmer_phone,))
+                        row = c.fetchone()
+                        conn.close()
+                        if row and row[0]:
+                            disease_flag = "Diseased"
+                    except Exception as db_err:
+                        print(f"DB Error for ADVISE: {db_err}")
+                        
+                    prompt = f"You are an expert Agronomist. The current government Mandi price for {crop_name} is ₹{modal_price}/quintal. The farmer's recent field sensor data shows disease_present={disease_flag}. Write a 3-sentence WhatsApp message in Hindi advising them on what Asking Price they should set. If the crop is healthy, tell them to ask for a premium (+₹50-100). If diseased, advise a competitive lower price. Be concise."
+                    
+                    ai_response = gemini_client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=[prompt]
+                    )
+                    reply = ai_response.text.strip()
+                else:
+                    reply = "⚠️ सही फॉर्मेट:\nADVISE [फसल का नाम]\nउदा: ADVISE POTATO"
+                    
+                twilio_client.messages.create(
+                    from_=f"whatsapp:{TWILIO_NUMBER}",
+                    to=From,
+                    body=reply
+                )
+            except Exception as e:
+                print(f"ADVISE handler error: {e}")
+                twilio_client.messages.create(
+                    from_=f"whatsapp:{TWILIO_NUMBER}",
+                    to=From,
+                    body="⚠️ कुछ गड़बड़ हो गई। कृपया दोबारा कोशिश करें।"
+                )
+
+        # --- LIST COMMAND HANDLER ---
+        # Format: LIST <quantity> <commodity> [<asking_price>] (e.g. "LIST 50 POTATO 750")
+        elif text.startswith("LIST"):
+            try:
+                match = re.match(r'^LIST\s+(\d+)\s+([A-Z]+)(?:\s+(\d+))?$', text)
                 if match:
                     quantity = int(match.group(1))
                     commodity = match.group(2).strip().capitalize()
+                    asking_price = int(match.group(3)) if match.group(3) else "Negotiable"
 
                     listing = {
                         "id": random.randint(1000, 9999),
@@ -119,19 +170,20 @@ async def receive_whatsapp_image(
                         "district": "Demo District",
                         "commodity": commodity,
                         "quantity": quantity,
+                        "asking_price": asking_price
                     }
                     ACTIVE_LISTINGS.append(listing)
                     print(f"New listing created: {listing}")
 
                     reply = (
-                        f"✅ आपकी उपज Acre लाइव मार्केट में लिस्ट कर दी गई है!\n"
-                        f"(Your produce is now listed on the Acre live market!)\n\n"
+                        f"✅ आपकी उपज ₹{asking_price}/क्विंटल के भाव पर लाइव मार्केट में लिस्ट कर दी गई है!\n"
+                        f"(Listed on live market!)\n\n"
                         f"📦 {commodity} — {quantity} Quintals"
                     )
                 else:
                     reply = (
-                        "⚠️ सही फॉर्मेट:\nLIST [मात्रा] [फसल का नाम]\n"
-                        "उदा: LIST 50 POTATO"
+                        "⚠️ सही फॉर्मेट:\nLIST [मात्रा] [फसल का नाम] [पूछताछ मूल्य]\n"
+                        "उदा: LIST 50 POTATO 750"
                     )
 
                 twilio_client.messages.create(

@@ -94,6 +94,11 @@ export default function MarketFeed({
                       <Package className="h-3.5 w-3.5 text-slate-400" />
                       {listing.quantity}
                     </span>
+                    {listing.askingPrice && (
+                      <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-bold ${listing.askingPrice === 'Negotiable' ? 'bg-slate-100 text-slate-600' : 'bg-krishi-100 text-krishi-700'}`}>
+                        Ask: {listing.askingPrice === 'Negotiable' ? 'Negotiable' : `₹${listing.askingPrice}/Qtl`}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

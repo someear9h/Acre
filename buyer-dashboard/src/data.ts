@@ -10,6 +10,7 @@ export const CROP_LISTINGS: CropListing[] = [
     quantity: "50 Quintals",
     grade: "Grade A",
     emoji: "🥔",
+    askingPrice: 750,
   },
   {
     id: 2,
@@ -20,6 +21,7 @@ export const CROP_LISTINGS: CropListing[] = [
     quantity: "30 Quintals",
     grade: "Grade A",
     emoji: "🫛",
+    askingPrice: 1200,
   },
   {
     id: 3,
@@ -30,6 +32,7 @@ export const CROP_LISTINGS: CropListing[] = [
     quantity: "120 Quintals",
     grade: "Grade A+",
     emoji: "🌾",
+    askingPrice: 2200,
   },
 ];
 

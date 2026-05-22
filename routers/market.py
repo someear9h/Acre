@@ -85,7 +85,7 @@ Write a 3-sentence WhatsApp message in simple Hindi. State the official price, c
         "current_offer": buyer_offer_price,
         "counter_offer": None,
     }
-    print(f"📝 Contract saved for {farmer_phone}: {ACTIVE_CONTRACTS[farmer_phone]}")
+    print(f"Contract saved for {farmer_phone}: {ACTIVE_CONTRACTS[farmer_phone]}")
 
     # --- Step 5: Return summary ---
     return {

@@ -7,6 +7,7 @@ export interface CropListing {
   quantity: string;
   grade: string;
   emoji: string;
+  askingPrice?: string | number;
 }
 
 export interface EvaluateOfferResponse {

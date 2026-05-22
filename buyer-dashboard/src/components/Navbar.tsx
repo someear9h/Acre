@@ -11,7 +11,7 @@ export default function Navbar() {
           </div>
           <div>
             <h1 className="text-lg font-bold tracking-tight text-slate-900">
-              Krishi<span className="text-krishi-600">OS</span>
+              Ac<span className="text-krishi-600">re</span>
             </h1>
             <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
               B2B Market
