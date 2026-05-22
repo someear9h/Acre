@@ -115,3 +115,57 @@ async def receive_sensor_event(event: SensorEvent):
 
     finally:
         conn.close()
+
+
+@router.get("/api/contract-alerts/{farmer_phone}")
+async def get_contract_alerts(farmer_phone: str):
+    """
+    Checks if there's an active alert for the given farmer.
+    Returns alert details if the contract quantity has been downgraded.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        # Fetch active contract
+        cursor.execute("""
+            SELECT initial_qty, current_qty FROM smart_contracts
+            WHERE farmer_phone = ? AND status = 'ACTIVE'
+            LIMIT 1
+        """, (farmer_phone,))
+        contract = cursor.fetchone()
+
+        if not contract:
+            return {"alert_active": False}
+
+        initial_qty = contract["initial_qty"]
+        current_qty = contract["current_qty"]
+
+        # Fetch latest IoT log
+        cursor.execute("""
+            SELECT soil_moisture, temperature, disease_flag FROM iot_logs
+            WHERE farmer_phone = ?
+            ORDER BY timestamp DESC
+            LIMIT 1
+        """, (farmer_phone,))
+        latest_log = cursor.fetchone()
+
+        if latest_log and current_qty < initial_qty:
+            return {
+                "alert_active": True,
+                "contract": {
+                    "initial_qty": initial_qty,
+                    "current_qty": current_qty
+                },
+                "sensor_data": {
+                    "soil_moisture": latest_log["soil_moisture"],
+                    "temperature": latest_log["temperature"],
+                    "disease_flag": bool(latest_log["disease_flag"])
+                }
+            }
+
+        return {"alert_active": False}
+    except Exception as e:
+        print(f"Alert endpoint error: {e}")
+        return {"alert_active": False}
+    finally:
+        conn.close()

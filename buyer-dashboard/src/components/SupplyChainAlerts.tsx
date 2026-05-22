@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AlertTriangle,
   Thermometer,
@@ -11,18 +11,44 @@ import {
   TrendingDown,
 } from "lucide-react";
 
-interface SupplyChainAlertsProps {
-  visible: boolean;
-  onDismiss: () => void;
+import { API_BASE_URL } from "../data";
+
+interface AlertData {
+  contract: { initial_qty: number; current_qty: number };
+  sensor_data: { soil_moisture: number; temperature: number; disease_flag: boolean };
 }
 
-export default function SupplyChainAlerts({
-  visible,
-  onDismiss,
-}: SupplyChainAlertsProps) {
+export default function SupplyChainAlerts() {
   const [expanded, setExpanded] = useState(true);
+  const [visible, setVisible] = useState(false);
+  const [alertData, setAlertData] = useState<AlertData | null>(null);
 
-  if (!visible) return null;
+  useEffect(() => {
+    // If the alert is already showing, we can stop polling.
+    if (visible) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/contract-alerts/%2B919028432689`);
+        if (!res.ok) return;
+        const json = await res.json();
+
+        if (json.alert_active) {
+          setAlertData({
+            contract: json.contract,
+            sensor_data: json.sensor_data,
+          });
+          setVisible(true);
+        }
+      } catch (e) {
+        // Silently ignore fetch errors during polling
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [visible]);
+
+  if (!visible || !alertData) return null;
 
   return (
     <div className="animate-alert-in">
@@ -61,7 +87,7 @@ export default function SupplyChainAlerts({
               )}
             </button>
             <button
-              onClick={onDismiss}
+              onClick={() => setVisible(false)}
               className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-red-100 hover:text-red-700"
               aria-label="Dismiss alert"
             >
@@ -117,10 +143,12 @@ export default function SupplyChainAlerts({
                       Soil Moisture
                     </p>
                     <p className="text-sm font-bold text-blue-800">
-                      25%{" "}
-                      <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600">
-                        CRITICAL
-                      </span>
+                      {alertData.sensor_data.soil_moisture}%{" "}
+                      {alertData.sensor_data.soil_moisture < 30.0 && (
+                        <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600">
+                          CRITICAL
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -133,10 +161,12 @@ export default function SupplyChainAlerts({
                       Temperature
                     </p>
                     <p className="text-sm font-bold text-orange-800">
-                      38°C{" "}
-                      <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-600">
-                        HIGH
-                      </span>
+                      {alertData.sensor_data.temperature}°C{" "}
+                      {alertData.sensor_data.temperature > 35.0 && (
+                        <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-600">
+                          HIGH
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -149,10 +179,12 @@ export default function SupplyChainAlerts({
                       Disease Flag
                     </p>
                     <p className="text-sm font-bold text-red-800">
-                      Detected{" "}
-                      <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600">
-                        TRUE
-                      </span>
+                      {alertData.sensor_data.disease_flag ? "Detected" : "None"}{" "}
+                      {alertData.sensor_data.disease_flag && (
+                        <span className="ml-1 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600">
+                          TRUE
+                        </span>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -170,11 +202,11 @@ export default function SupplyChainAlerts({
               <p className="text-sm leading-relaxed text-amber-900">
                 Forward contract automatically revised from{" "}
                 <span className="font-bold text-red-700 line-through">
-                  100 Quintals
+                  {alertData.contract.initial_qty} Quintals
                 </span>{" "}
                 →{" "}
                 <span className="font-bold text-emerald-700">
-                  70 Quintals
+                  {alertData.contract.current_qty} Quintals
                 </span>{" "}
                 to guarantee quality. Escrow hold adjusted.
               </p>
@@ -182,7 +214,7 @@ export default function SupplyChainAlerts({
 
             {/* Acknowledge Button */}
             <button
-              onClick={onDismiss}
+              onClick={() => setVisible(false)}
               className="mt-4 w-full rounded-xl border border-amber-300/60 bg-white/80 py-2.5 text-sm font-semibold text-amber-800 shadow-sm transition-all duration-200 hover:bg-amber-100 hover:shadow-md active:scale-[0.99]"
             >
               Acknowledge & Dismiss

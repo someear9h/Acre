@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { CheckCircle2 } from "lucide-react";
 import Navbar from "./components/Navbar";
 import MarketFeed from "./components/MarketFeed";
 import TradingDesk from "./components/TradingDesk";
@@ -14,13 +15,15 @@ const POLL_INTERVAL_MS = 3000;
 export default function App() {
   const [selectedCrop, setSelectedCrop] = useState<CropListing | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [showAlert, setShowAlert] = useState(true);
 
   // --- Counter-Offer Polling State ---
   const [incomingCounterOffer, setIncomingCounterOffer] = useState(false);
   const [counterOfferPrice, setCounterOfferPrice] = useState(0);
   const [counterCommodity, setCounterCommodity] = useState("");
   const [originalOffer, setOriginalOffer] = useState(0);
+
+  // --- Finalized State ---
+  const [dealClosed, setDealClosed] = useState(false);
 
   const addToast = useCallback((toast: Omit<Toast, "id">) => {
     const id = Date.now();
@@ -33,7 +36,7 @@ export default function App() {
 
   // --- Polling: Check contract status every 3 seconds ---
   useEffect(() => {
-    const interval = setInterval(async () => {
+    const pollInterval = setInterval(async () => {
       try {
         const res = await fetch(
           `${API_BASE_URL}/contract-status/${encodeURIComponent(POLLING_PHONE)}`
@@ -42,22 +45,31 @@ export default function App() {
 
         const json = await res.json();
 
-        if (
-          json.status === "success" &&
-          json.data?.status === "COUNTER_OFFER" &&
-          json.data?.counter_offer
-        ) {
-          setCounterOfferPrice(json.data.counter_offer);
-          setCounterCommodity(json.data.commodity || "Potato");
-          setOriginalOffer(json.data.current_offer || 0);
-          setIncomingCounterOffer(true);
+        if (json.status === "success" && json.data) {
+          const status = json.data.status;
+
+          // If finalized, kill the interval and show success state
+          if (status === "ACCEPTED" || status === "REJECTED") {
+            clearInterval(pollInterval);
+            setDealClosed(true);
+            setIncomingCounterOffer(false);
+            return;
+          }
+
+          // If a counter-offer is received, show the banner
+          if (status === "COUNTER_OFFER" && json.data.counter_offer) {
+            setCounterOfferPrice(json.data.counter_offer);
+            setCounterCommodity(json.data.commodity || "Potato");
+            setOriginalOffer(json.data.current_offer || 0);
+            setIncomingCounterOffer(true);
+          }
         }
       } catch {
         // Silently ignore fetch errors — backend may be restarting
       }
     }, POLL_INTERVAL_MS);
 
-    return () => clearInterval(interval);
+    return () => clearInterval(pollInterval);
   }, []);
 
   // --- Accept Counter-Offer ---
@@ -114,23 +126,37 @@ export default function App() {
           {/* Right: 2/5 width — alerts + trading desk */}
           <div className="lg:col-span-2">
             <div className="sticky top-24 flex flex-col gap-5">
-              {/* Counter-Offer Banner (dynamic, from polling) */}
-              <CounterOfferBanner
-                visible={incomingCounterOffer}
-                counterPrice={counterOfferPrice}
-                commodity={counterCommodity}
-                originalOffer={originalOffer}
-                onAccept={handleAcceptCounter}
-                onDismiss={handleDismissCounter}
-              />
+              {dealClosed ? (
+                <div className="animate-alert-in flex flex-col items-center justify-center rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50 p-8 text-center shadow-lg shadow-blue-100/50">
+                  <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-500 shadow-sm shadow-blue-500/30">
+                    <CheckCircle2 className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="mb-2 text-xl font-bold text-blue-900">
+                    Deal Closed Successfully
+                  </h3>
+                  <p className="text-sm text-blue-700/80">
+                    The smart contract has been finalized. No further negotiation
+                    is required.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Counter-Offer Banner (dynamic, from polling) */}
+                  <CounterOfferBanner
+                    visible={incomingCounterOffer}
+                    counterPrice={counterOfferPrice}
+                    commodity={counterCommodity}
+                    originalOffer={originalOffer}
+                    onAccept={handleAcceptCounter}
+                    onDismiss={handleDismissCounter}
+                  />
 
-              {/* Supply Chain Alert (hardcoded demo) */}
-              <SupplyChainAlerts
-                visible={showAlert}
-                onDismiss={() => setShowAlert(false)}
-              />
+                  {/* Supply Chain Alert (dynamic polling) */}
+                  {!incomingCounterOffer && <SupplyChainAlerts />}
 
-              <TradingDesk selected={selectedCrop} onToast={addToast} />
+                  <TradingDesk selected={selectedCrop} onToast={addToast} />
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers import scan, advisory, market, status, iot
-from db.database import init_db, seed_demo_contract
+from db.database import init_db
 
 warnings.simplefilter("ignore", FutureWarning)
 
@@ -17,7 +17,6 @@ load_dotenv()
 async def lifespan(app: FastAPI):
     # --- Startup: Initialize SQLite ledger ---
     init_db()
-    seed_demo_contract("+919028432689", "+919028432689")
     yield
     # --- Shutdown: cleanup if needed ---
 

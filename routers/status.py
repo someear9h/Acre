@@ -28,7 +28,6 @@ async def accept_counter(farmer_phone: str):
     from services.state import ACTIVE_CONTRACTS
     from services.clients import twilio_client, TWILIO_NUMBER
 
-    # Clean the phone number string if necessary
     normalized_phone = farmer_phone.strip()
 
     if normalized_phone not in ACTIVE_CONTRACTS:
@@ -38,10 +37,8 @@ async def accept_counter(farmer_phone: str):
     commodity = contract.get("commodity", "Produce")
     final_price = contract.get("counter_offer")
 
-    # Update backend state
     contract["status"] = "ACCEPTED"
 
-    # Construct the final confirmation message in Hindi
     msg_body = f"*Acre Deal Confirmed (सौदा पक्का हो गया!)*\n\nखरीदार ने आपके {commodity} के लिए ₹{final_price}/क्विंटल का काउंटर-ऑफर स्वीकार कर लिया है।\n\n📦 आपका डिजिटल एस्क्रो एग्रीमेंट एक्टिव हो गया है। कृपया फसल डिलीवरी की तैयारी शुरू करें।"
 
     try:
