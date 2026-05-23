@@ -24,7 +24,7 @@ export default function SupplyChainAlerts() {
   const [alertData, setAlertData] = useState<AlertData | null>(null);
 
   useEffect(() => {
-    // If the alert is already showing, we can stop polling.
+    // If the alert is already showing, we can stop polling to save network calls.
     if (visible) return;
 
     const interval = setInterval(async () => {
@@ -47,6 +47,21 @@ export default function SupplyChainAlerts() {
 
     return () => clearInterval(interval);
   }, [visible]);
+
+  // CRITICAL FIX: The function to tell the backend the alert is dismissed
+  const handleAcknowledge = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/api/contract-alerts/%2B919028432689/acknowledge`, {
+        method: "POST",
+      });
+      // Once the backend confirms it updated SQLite, hide the UI
+      setVisible(false);
+    } catch (error) {
+      console.error("Failed to acknowledge alert:", error);
+      // Hide visually anyway to prevent UI blocking on a network hiccup
+      setVisible(false);
+    }
+  };
 
   if (!visible || !alertData) return null;
 
@@ -87,7 +102,7 @@ export default function SupplyChainAlerts() {
               )}
             </button>
             <button
-              onClick={() => setVisible(false)}
+              onClick={handleAcknowledge}
               className="rounded-lg p-1.5 text-amber-600 transition-colors hover:bg-red-100 hover:text-red-700"
               aria-label="Dismiss alert"
             >
@@ -98,11 +113,10 @@ export default function SupplyChainAlerts() {
 
         {/* Collapsible Body */}
         <div
-          className={`transition-all duration-300 ease-in-out ${
-            expanded
-              ? "max-h-[600px] opacity-100"
-              : "max-h-0 overflow-hidden opacity-0"
-          }`}
+          className={`transition-all duration-300 ease-in-out ${expanded
+            ? "max-h-[600px] opacity-100"
+            : "max-h-0 overflow-hidden opacity-0"
+            }`}
         >
           <div className="p-5">
             {/* Alert Type Badge */}
@@ -214,7 +228,7 @@ export default function SupplyChainAlerts() {
 
             {/* Acknowledge Button */}
             <button
-              onClick={() => setVisible(false)}
+              onClick={handleAcknowledge}
               className="mt-4 w-full rounded-xl border border-amber-300/60 bg-white/80 py-2.5 text-sm font-semibold text-amber-800 shadow-sm transition-all duration-200 hover:bg-amber-100 hover:shadow-md active:scale-[0.99]"
             >
               Acknowledge & Dismiss

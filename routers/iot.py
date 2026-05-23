@@ -63,8 +63,11 @@ async def receive_sensor_event(event: SensorEvent):
 
         # --- Step 4: Update contract & alert buyer if revised ---
         if revision_triggered:
+            # Explicitly set alert_acknowledged to 0 so the frontend knows it's a new alert
             cursor.execute("""
-                UPDATE smart_contracts SET current_qty = ? WHERE id = ?
+                UPDATE smart_contracts 
+                SET current_qty = ?, alert_acknowledged = 0 
+                WHERE id = ?
             """, (new_qty, contract_id))
             conn.commit()
             print(f"Contract #{contract_id} revised: {current_qty} -> {new_qty} Quintals")
@@ -72,9 +75,9 @@ async def receive_sensor_event(event: SensorEvent):
             # Send WhatsApp alert to buyer
             disease_status = "Detected" if event.disease_flag else "None"
             alert_msg = (
-                f"\U0001f6a8 *Acre Supply Chain Alert*\n\n"
+                f"*Acre Supply Chain Alert*\n\n"
                 f"Due to severe field conditions "
-                f"(Moisture: {event.soil_moisture}%, Temp: {event.temperature}\u00b0C) "
+                f"(Moisture: {event.soil_moisture}%, Temp: {event.temperature}°C) "
                 f"and potential disease risk, the forward contract with "
                 f"Farmer {event.farmer_phone} for Potato has been automatically revised "
                 f"from {current_qty} Quintals to {new_qty} Quintals to guarantee quality.\n\n"
@@ -128,13 +131,13 @@ async def get_contract_alerts(farmer_phone: str):
     try:
         # Fetch active contract
         cursor.execute("""
-            SELECT initial_qty, current_qty FROM smart_contracts
+            SELECT initial_qty, current_qty, alert_acknowledged FROM smart_contracts
             WHERE farmer_phone = ? AND status = 'ACTIVE'
             LIMIT 1
         """, (farmer_phone,))
         contract = cursor.fetchone()
 
-        if not contract:
+        if not contract or contract["alert_acknowledged"]:
             return {"alert_active": False}
 
         initial_qty = contract["initial_qty"]
@@ -167,5 +170,26 @@ async def get_contract_alerts(farmer_phone: str):
     except Exception as e:
         print(f"Alert endpoint error: {e}")
         return {"alert_active": False}
+    finally:
+        conn.close()
+
+@router.post("/api/contract-alerts/{farmer_phone}/acknowledge")
+async def acknowledge_alert(farmer_phone: str):
+    """
+    Marks the current active alert for the given farmer as acknowledged.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            UPDATE smart_contracts
+            SET alert_acknowledged = 1
+            WHERE farmer_phone = ? AND status = 'ACTIVE'
+        """, (farmer_phone,))
+        conn.commit()
+        return {"status": "success"}
+    except Exception as e:
+        print(f"Acknowledge error: {e}")
+        return {"status": "error", "message": str(e)}
     finally:
         conn.close()
