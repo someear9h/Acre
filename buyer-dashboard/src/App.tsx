@@ -9,7 +9,7 @@ import ToastContainer from "./components/ToastContainer";
 import { CROP_LISTINGS, API_BASE_URL } from "./data";
 import type { CropListing, Toast } from "./types";
 
-const POLLING_PHONE = "+919028432689";
+const POLLING_PHONE = "+918983404900";
 const POLL_INTERVAL_MS = 3000;
 
 export default function App() {

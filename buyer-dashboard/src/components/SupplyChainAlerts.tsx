@@ -29,7 +29,7 @@ export default function SupplyChainAlerts() {
 
     const interval = setInterval(async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/api/contract-alerts/%2B919028432689`);
+        const res = await fetch(`${API_BASE_URL}/api/contract-alerts/%2B918983404900`);
         if (!res.ok) return;
         const json = await res.json();
 
@@ -51,7 +51,7 @@ export default function SupplyChainAlerts() {
   // CRITICAL FIX: The function to tell the backend the alert is dismissed
   const handleAcknowledge = async () => {
     try {
-      await fetch(`${API_BASE_URL}/api/contract-alerts/%2B919028432689/acknowledge`, {
+      await fetch(`${API_BASE_URL}/api/contract-alerts/%2B918983404900/acknowledge`, {
         method: "POST",
       });
       // Once the backend confirms it updated SQLite, hide the UI

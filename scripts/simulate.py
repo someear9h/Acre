@@ -12,14 +12,14 @@ def main():
     
     # 1. Reset Database
     init_db()
-    seed_demo_contract("+919028432689", "+919028432689")
+    seed_demo_contract("+918983404900", "+918983404900")
     print("✅ Database seeded and reset to 100 Quintals.")
     
     # 2. Trigger IoT Sensor Event Webhook
     url = "http://localhost:8000/webhook/sensor-event"
     payload = {
-        "farmer_phone": "+919028432689",
-        "buyer_phone": "+919028432689",
+        "farmer_phone": "+918983404900",
+        "buyer_phone": "+918983404900",
         "soil_moisture": 25.0,
         "temperature": 38.0,
         "disease_flag": True

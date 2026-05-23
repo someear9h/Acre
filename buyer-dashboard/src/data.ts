@@ -4,7 +4,7 @@ export const CROP_LISTINGS: CropListing[] = [
   {
     id: 1,
     farmer_name: "Ram Singh",
-    phone: "+919028432689",
+    phone: "+918983404900",
     district: "Patiala",
     commodity: "Potato",
     quantity: "50 Quintals",

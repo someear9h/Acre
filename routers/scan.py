@@ -35,14 +35,17 @@ async def receive_whatsapp_image(
     if NumMedia > 0 and MediaUrl0:
         print("Downloading image from Twilio...")
         try:
-            # Note: Re-fetching env vars here just for the Twilio auth tuple
+            # Fetch credentials safely from environment variables
             TWILIO_SID = os.getenv("TWILIO_ACCOUNT_SID")
             TWILIO_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
             
+            print(f"Attempting secure authenticated download from Twilio Media Server...")
+            # ✅ FIXED: Added Basic Auth headers so Twilio doesn't throw a 401 Unauthorized Client Error
             response = requests.get(MediaUrl0, auth=(TWILIO_SID, TWILIO_TOKEN))
             response.raise_for_status()
             
             raw_img = Image.open(BytesIO(response.content))
+            print("✅ Image successfully authenticated and downloaded from Twilio!")
             
             disease_label = "Unknown"
             confidence = 0.0
@@ -96,16 +99,20 @@ async def receive_whatsapp_image(
             print("Reply sent.")
             
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"Error downloading or processing image: {e}")
+            twilio_client.messages.create(
+                from_=f"whatsapp:{TWILIO_NUMBER}",
+                to=From,
+                body="⚠️ छवि डाउनलोड करने में असमर्थ। कृपया दोबारा प्रयास करें।"
+            )
+            
     elif NumMedia == 0 and Body:
         # --- STRUCTURED COMMAND PROTOCOL ---
-        # Parse text-only replies for LIST / ACCEPT / REJECT / OFFER commands.
         text = Body.strip().upper()
-        farmer_phone = From.replace("whatsapp:", "")
+        farmer_phone = From.replace("whatsapp:", "").strip()
         print(f"Text reply from {farmer_phone}: '{text}'")
 
         # --- ADVISE COMMAND HANDLER ---
-        # Format: ADVISE <commodity> (e.g. "ADVISE POTATO")
         if text.startswith("ADVISE"):
             try:
                 match = re.match(r'^ADVISE\s+(.+)$', text)
@@ -118,12 +125,14 @@ async def receive_whatsapp_image(
                     mandi_data = await get_mandi_price("Demo District", crop_name)
                     modal_price = mandi_data.get("modal_price", 0) if isinstance(mandi_data, dict) else 0
                     
-                    # Check DB for disease
+                    # ✅ FIXED: Explicitly sanitize the phone format string to match local SQLite schema rules
+                    db_phone = farmer_phone if farmer_phone.startswith("+") else f"+{farmer_phone}"
+                    
                     disease_flag = "Healthy"
                     try:
                         conn = sqlite3.connect("acre_ledger.db")
                         c = conn.cursor()
-                        c.execute("SELECT disease_flag FROM iot_logs WHERE farmer_phone=? ORDER BY timestamp DESC LIMIT 1", (f"+{farmer_phone}" if not farmer_phone.startswith("+") else farmer_phone,))
+                        c.execute("SELECT disease_flag FROM iot_logs WHERE farmer_phone=? ORDER BY timestamp DESC LIMIT 1", (db_phone,))
                         row = c.fetchone()
                         conn.close()
                         if row and row[0]:
@@ -155,7 +164,6 @@ async def receive_whatsapp_image(
                 )
 
         # --- LIST COMMAND HANDLER ---
-        # Format: LIST <quantity> <commodity> [<asking_price>] (e.g. "LIST 50 POTATO 750")
         elif text.startswith("LIST"):
             try:
                 match = re.match(r'^LIST\s+(\d+)\s+([A-Z]+)(?:\s+(\d+))?$', text)
@@ -201,7 +209,6 @@ async def receive_whatsapp_image(
                 )
 
         # --- NEGOTIATION REPLY HANDLER ---
-        # Parse text-only replies for ACCEPT / REJECT / OFFER commands.
         elif farmer_phone in ACTIVE_CONTRACTS:
             contract = ACTIVE_CONTRACTS[farmer_phone]
             print(f"Active contract found: {contract}")
@@ -246,7 +253,6 @@ async def receive_whatsapp_image(
                     body="⚠️ कुछ गड़बड़ हो गई। कृपया दोबारा कोशिश करें।"
                 )
         else:
-            # No active contract and not a command — send default prompt
             twilio_client.messages.create(
                 from_=f"whatsapp:{TWILIO_NUMBER}",
                 to=From,

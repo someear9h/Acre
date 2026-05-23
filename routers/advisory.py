@@ -39,7 +39,7 @@ async def trigger_alert(farmer_phone: str):
         score = "?"
         advisory_text = ai_result
         
-    msg_body = f"*Morning Advisory*\n\n🎯 Action Score: {score}/10\n\n{advisory_text}"
+    msg_body = f"*Morning Advisory*\n\n Action Score: {score}/10\n\n{advisory_text}"
     
     try:
         twilio_client.messages.create(
