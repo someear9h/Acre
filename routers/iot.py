@@ -79,7 +79,7 @@ async def receive_sensor_event(event: SensorEvent):
                 f"Due to severe field conditions "
                 f"(Moisture: {event.soil_moisture}%, Temp: {event.temperature}°C) "
                 f"and potential disease risk, the forward contract with "
-                f"Farmer {event.farmer_phone} for Potato has been automatically revised "
+                f"Buyer (Spice Garden)for Potato has been automatically revised "
                 f"from {current_qty} Quintals to {new_qty} Quintals to guarantee quality.\n\n"
                 f"Our system has adjusted your escrow hold accordingly."
             )

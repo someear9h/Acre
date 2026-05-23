@@ -12,6 +12,17 @@ async def trigger_alert(farmer_phone: str):
     pune_lat = 18.5204
     pune_lon = 73.8567
     crop = "Tomato"
+
+    clean_phone = farmer_phone.strip().replace(" ", "")
+    
+    if len(clean_phone) == 10 and not clean_phone.startswith("+"):
+        clean_phone = "+91" + clean_phone
+        
+    elif len(clean_phone) == 12 and clean_phone.startswith("91"):
+        clean_phone = "+" + clean_phone
+        
+    elif not clean_phone.startswith("+"):
+        clean_phone = "+" + clean_phone
     
     print(f"Fetching weather for {crop} farm at {pune_lat}, {pune_lon}...")
     weather_data = get_24h_weather_forecast(pune_lat, pune_lon)
@@ -28,14 +39,15 @@ async def trigger_alert(farmer_phone: str):
         score = "?"
         advisory_text = ai_result
         
-    msg_body = f"Morning Advisory*\n\n🎯 Action Score: {score}/10\n {advisory_text}"
+    msg_body = f"*Morning Advisory*\n\n🎯 Action Score: {score}/10\n\n{advisory_text}"
     
     try:
         twilio_client.messages.create(
             from_=f"whatsapp:{TWILIO_NUMBER}",
-            to=f"whatsapp:{farmer_phone}",
+            to=f"whatsapp:{clean_phone}", 
             body=msg_body
         )
+        print("INFO: Success sending Advisory to whatsapp")
         status = "Success"
     except Exception as e:
         status = f"Failed to send WhatsApp: {e}"
