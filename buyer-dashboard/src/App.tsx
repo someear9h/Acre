@@ -73,23 +73,55 @@ export default function App() {
   }, []);
 
   // --- Accept Counter-Offer ---
-  const handleAcceptCounter = useCallback(() => {
-    setIncomingCounterOffer(false);
-    addToast({
-      type: "success",
-      title: "Counter-Offer Accepted",
-      message: `You accepted the farmer's counter-offer of ₹${counterOfferPrice}/quintal for ${counterCommodity}. Deal confirmed via WhatsApp.`,
-    });
+  const handleAcceptCounter = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/accept-counter/${encodeURIComponent(POLLING_PHONE)}`,
+        { method: "POST" }
+      );
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+
+      setIncomingCounterOffer(false);
+      setDealClosed(true);
+      addToast({
+        type: "success",
+        title: "Counter-Offer Accepted",
+        message: `You accepted the farmer's counter-offer of ₹${counterOfferPrice}/quintal for ${counterCommodity}. Deal confirmed via WhatsApp.`,
+      });
+    } catch (err) {
+      console.error("Accept counter-offer failed:", err);
+      addToast({
+        type: "error",
+        title: "Action Failed",
+        message: "Could not accept the counter-offer. Please try again.",
+      });
+    }
   }, [counterOfferPrice, counterCommodity, addToast]);
 
-  // --- Dismiss Counter-Offer ---
-  const handleDismissCounter = useCallback(() => {
-    setIncomingCounterOffer(false);
-    addToast({
-      type: "error",
-      title: "Counter-Offer Declined",
-      message: "The farmer's counter-offer has been declined.",
-    });
+  // --- Decline Counter-Offer ---
+  const handleDismissCounter = useCallback(async () => {
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/reject-counter/${encodeURIComponent(POLLING_PHONE)}`,
+        { method: "POST" }
+      );
+      if (!res.ok) throw new Error(`Server responded ${res.status}`);
+
+      setIncomingCounterOffer(false);
+      setDealClosed(true);
+      addToast({
+        type: "error",
+        title: "Counter-Offer Declined",
+        message: "The farmer's counter-offer has been declined. They have been notified via WhatsApp.",
+      });
+    } catch (err) {
+      console.error("Reject counter-offer failed:", err);
+      addToast({
+        type: "error",
+        title: "Action Failed",
+        message: "Could not decline the counter-offer. Please try again.",
+      });
+    }
   }, [addToast]);
 
   return (
